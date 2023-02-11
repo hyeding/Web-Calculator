@@ -28,38 +28,11 @@ public class CustomWebApplicationServer {
                 logger.info("[CustomWebApplicationServer] client connected!");
 
                 /**
-                 * Step1 - 사용자 요청을 메인 Thread가 처리하도록 한다.
+                 * Step2 - 사용자 요청이 들어올 때마다 Thread를 새로 생성하여 사용자 요청을 처리하도록 한다.
+                 * 단점 : 요청이 있을때마다 쓰레드를 생성하다보면 나중에는 서버가 다운될 수 있으므로 Thread 풀을 정해놓고 사용하는 것이 좋다.
                  */
-
-                try(InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-                    DataOutputStream dos = new DataOutputStream(out);
-
-//                    // 아래 코드로 http 구조 확인할 수 있음
-//                    String line;
-//                    while((line = br.readLine()) != "") {
-//                        System.out.println(line);
-//                    }
-                    HttpRequest httpRequest = new HttpRequest(br);
-
-                    // GET /calculate?operand1=11&operator=*&operand2=55  HTTP/1.1
-                    if (httpRequest.isGetRequest() && httpRequest.matchPath("/calculate")) {
-                        QueryStrings queryStrings = httpRequest.getQueryStrings();
-
-                        int operand1 = Integer.parseInt(queryStrings.getValue("operand1"));
-                        String operator = queryStrings.getValue("operator");
-                        int operand2 = Integer.parseInt(queryStrings.getValue("operand2"));
-
-                        int result = Calculator.calculate(new PositiveNumber(operand1), operator, new PositiveNumber(operand2));
-                        byte[] body = String.valueOf(result).getBytes();
-
-                        HttpResponse response = new HttpResponse(dos);
-                        response.response200Header("application/json", body.length);
-                        response.responseBody(body);
-                    }
-
+                new Thread(new ClientRequestHandler(clientSocket)).start();
                 }
             }
         }
     }
-}
